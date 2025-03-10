@@ -1,4 +1,3 @@
-// src/components/ProductFormModal.js
 import axios from "axios"; // Importa o Axios diretamente
 import { useEffect, useRef, useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
@@ -16,9 +15,20 @@ const ProductFormModal = ({ show, onHide }) => {
   const [error, setError] = useState("");
   const fileInputRef = useRef();
 
+  // Função para gerar um código aleatório
+  const generateRandomCode = () => {
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return code;
+  };
+
   // Limpa o formulário sempre que a modal for aberta
   useEffect(() => {
     if (show) {
+      console.log("Modal aberta. Resetando formulário..."); // Log para depuração
       setFormData({
         name: "",
         rating: 3,
@@ -35,6 +45,7 @@ const ProductFormModal = ({ show, onHide }) => {
   // Função para lidar com o upload de imagens
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
+    console.log(`Upload de ${files.length} imagem(ns)...`); // Log para depuração
     const newImages = [];
 
     files.forEach((file) => {
@@ -49,6 +60,7 @@ const ProductFormModal = ({ show, onHide }) => {
         });
 
         if (newImages.length === files.length) {
+          console.log("Imagens processadas:", newImages); // Log para depuração
           setImages((prev) => [...prev, ...newImages]);
         }
       };
@@ -58,6 +70,7 @@ const ProductFormModal = ({ show, onHide }) => {
 
   // Função para definir a imagem padrão
   const handleSetDefaultImage = (filename) => {
+    console.log(`Definindo imagem padrão: ${filename}`); // Log para depuração
     setImages((prev) =>
       prev.map((img) => ({
         ...img,
@@ -68,24 +81,28 @@ const ProductFormModal = ({ show, onHide }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Formulário enviado!"); // Log para depuração
+    console.log("Botão 'Salvar' clicado!"); // Log para depuração
 
     setError("");
 
     // Validação básica
     if (!formData.name || formData.price <= 0 || formData.stock < 0) {
       setError("Preencha todos os campos obrigatórios.");
-      console.log("Erro: Campos obrigatórios não preenchidos."); // Log para depuração
+      console.error("Erro: Campos obrigatórios não preenchidos."); // Log para depuração
       return;
     }
 
     if (!images.some((img) => img.isDefault)) {
       setError("Selecione uma imagem padrão.");
-      console.log("Erro: Nenhuma imagem padrão selecionada."); // Log para depuração
+      console.error("Erro: Nenhuma imagem padrão selecionada."); // Log para depuração
       return;
     }
 
+    // Gera um código aleatório para o produto
+    const codigo = generateRandomCode();
+
     const productData = {
+      codigo, // Adiciona o código gerado ao payload
       nome: formData.name,
       preco: formData.price,
       quantidade: formData.stock,
@@ -100,14 +117,24 @@ const ProductFormModal = ({ show, onHide }) => {
     console.log("Dados enviados para o backend:", productData); // Log para depuração
 
     try {
-      const response = await axios.post("http://localhost:8080/api/produtos", productData);
+      console.log("Enviando requisição POST para http://localhost:8080/api/produtos/cadastrar"); // Log para depuração
+      const response = await axios.post("http://localhost:8080/api/produtos/cadastrar", productData);
       console.log("Resposta do backend:", response.data); // Log para depuração
 
       // Fecha a modal após o salvamento
       onHide();
     } catch (err) {
-      console.error("Erro ao salvar o produto:", err.response ? err.response.data : err.message);
-      setError("Erro ao salvar o produto. Tente novamente.");
+      console.error("Erro ao salvar o produto:", err); // Log para depuração
+      if (err.response) {
+        console.error("Resposta do servidor:", err.response.data); // Log para depuração
+        setError(`Erro no servidor: ${err.response.data.message || "Tente novamente."}`);
+      } else if (err.request) {
+        console.error("Nenhuma resposta recebida do servidor:", err.request); // Log para depuração
+        setError("Falha na comunicação com o servidor. Verifique sua conexão.");
+      } else {
+        console.error("Erro desconhecido:", err.message); // Log para depuração
+        setError("Ocorreu um erro inesperado. Tente novamente.");
+      }
     }
   };
 
@@ -243,16 +270,18 @@ const ProductFormModal = ({ show, onHide }) => {
               hidden
             />
           </Form.Group>
+
+          {/* Botões dentro do formulário */}
+          <div className="d-flex justify-content-end gap-2">
+            <Button variant="secondary" onClick={onHide}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary">
+              Salvar
+            </Button>
+          </div>
         </Form>
       </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
-          Cancelar
-        </Button>
-        <Button type="submit" variant="primary">
-          Salvar
-        </Button>
-      </Modal.Footer>
     </Modal>
   );
 };
